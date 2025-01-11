@@ -1,12 +1,15 @@
 import express from "express";
 
-import {IsEmail, IsStrongPassword, IsUrl, validateOrReject} from "class-validator";
+import {IsEmail, IsString, IsStrongPassword, IsUrl, validateOrReject} from "class-validator";
 import {Expose, plainToInstance} from "class-transformer";
 import {EmailService} from "../services/email.service.js";
 import {TokenService} from "../services/token.service.js";
 import {Token} from "../entitites/token.entity.js";
 import {UserService} from "../services/user.service.js";
 import {User} from "../entitites/user.entity.js";
+import {generateToken} from "../utils/jwt.utils.js";
+import {appConfig} from "../config/app.config.js";
+import {comparePassword} from "../utils/password.utils.js";
 
 export class RegisterDto {
     @IsUrl({protocols: ['https']})
@@ -36,6 +39,16 @@ export class ResendRegisterMailDto {
     @IsEmail()
     @Expose()
     email: string;
+}
+
+export class LoginDto {
+    @IsEmail()
+    @Expose()
+    email: string;
+
+    @IsString()
+    @Expose()
+    password: string;
 }
 
 export class AuthController {
@@ -159,5 +172,69 @@ export class AuthController {
         }
 
         return res.send({message: 'okay'})
+    }
+
+    static async login(req: express.Request, res: express.Response): Promise<any> {
+        const loginDto: LoginDto = plainToInstance(LoginDto, req.body, {excludeExtraneousValues: true});
+
+        try {
+            await validateOrReject(loginDto)
+        } catch (e) {
+            return res.status(401).send({message: 'Unauthorized'})
+        }
+
+        let user: User;
+        try {
+            user = await UserService.getByEmail(loginDto.email)
+        } catch (e) {
+            return res.status(401).send({message: 'Unauthorized'})
+        }
+
+        if (!user.confirmed) {
+            return res.status(401).send({message: 'Unauthorized'})
+        }
+
+        if (user.bannedUntil && user.bannedUntil > new Date()) {
+            return res.status(401).send({message: 'Unauthorized', bannedUntil: user.bannedUntil})
+        } else if (user.bannedUntil && user.bannedUntil <= new Date()) {
+            user.bannedUntil = null
+            user.loginAttempts = 0
+
+            try {
+                await UserService.update(user)
+            } catch (e) {
+                return res.status(500).send({message: 'Could not update user'})
+            }
+        }
+
+        if (!(await comparePassword(user.password, loginDto.password))) {
+            user.loginAttempts++
+            if (user.loginAttempts >= appConfig.maxLoginAttempts) {
+                user.bannedUntil = new Date(Date.now() + appConfig.banTime)
+            }
+
+            try {
+                await UserService.update(user)
+            } catch (e) {
+                return res.status(500).send({message: 'Could not update user'})
+            }
+
+            return res.status(401).send({
+                message: 'Unauthorized',
+                bannedUntil: user.bannedUntil,
+                loginAttempts: appConfig.maxLoginAttempts - user.loginAttempts
+            })
+        }
+
+        try {
+            user.loginAttempts = 0
+            await UserService.update(user)
+        } catch (e) {
+            return res.status(500).send({message: 'Could not update user'})
+        }
+
+        const jwt = generateToken({id: user.id, email: user.email, role: user.role})
+
+        return res.send(jwt)
     }
 }
