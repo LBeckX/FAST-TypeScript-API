@@ -1,0 +1,14 @@
+extends ../layout
+
+block body
+    - var link = returnUrl;
+
+    h3 Hi #{email},
+
+    p
+        | Dein Passwort wurde geändert. Klicke auf folgenden Link um Dich anzumelden:
+
+    p
+        a(href=link) #{link}
+
+    p Viel erfolg!

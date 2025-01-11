@@ -34,7 +34,18 @@ export class TokenService {
     static async getByToken(tokenStr: string) {
         const token = await this.tokenRepository.findOne({where: {token: tokenStr}})
         if (dateFns.isBefore(token.validUntil, new Date())) {
-            console.log('Token expired', token, new Date())
+            return null
+        }
+        return token
+    }
+
+    static async getOnceByToken(tokenStr: string) {
+        const token = await this.tokenRepository.findOne({where: {token: tokenStr}})
+        if (!token) {
+            return null;
+        }
+        await TokenService.delete(token.token)
+        if (dateFns.isBefore(token.validUntil, new Date())) {
             return null
         }
         return token

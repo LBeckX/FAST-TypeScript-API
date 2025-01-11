@@ -6,10 +6,6 @@ authRouter.post('/login', AuthController.login);
 authRouter.post('/register', AuthController.register);
 authRouter.post('/register/confirmation', AuthController.registerConfirmation);
 authRouter.post('/register/resend', AuthController.registerResend);
-authRouter.post('/password-reset', (req, res) => {
-    res.send('password reset')
-});
-authRouter.post('/password-reset/confirmation', (req, res) => {
-    res.send('password reset confirmation')
-});
+authRouter.post('/password-reset', AuthController.passwordReset);
+authRouter.post('/password-reset/confirmation', AuthController.passwordResetConfirmation);
 export default authRouter;
