@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import {DataSource} from "typeorm";
 import {User} from "../entitites/user.entity.js";
+import {Token} from "../entitites/token.entity.js";
 dotenv.config()
 
 export const databaseConfig = new DataSource({
@@ -12,7 +13,7 @@ export const databaseConfig = new DataSource({
     database: process.env.DB_DATABASE || '',
     synchronize: true,
     logging: true,
-    entities: [User],
+    entities: [User, Token],
     subscribers: [],
     migrations: [],
 })
