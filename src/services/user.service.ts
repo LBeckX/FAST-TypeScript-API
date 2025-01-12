@@ -1,6 +1,7 @@
 import {User} from "../entitites/user.entity.js";
 import {databaseConfig} from "../config/database.config.js";
 import * as argon2 from "argon2";
+import {instanceToInstance} from "class-transformer";
 
 export class UserService {
 
@@ -40,5 +41,9 @@ export class UserService {
 
     static async delete(id: number) {
         return await this.userRepository.delete({id})
+    }
+
+    static getSafeUser(user: User) {
+        return instanceToInstance(user, {excludeExtraneousValues: true})
     }
 }
